@@ -1,20 +1,22 @@
 import React from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../components/common/Card';
-import { useQuestStore } from '../../store/questStore';
-import { useProgressStore } from '../../store/progressStore';
-import { Theme } from '../../constants/Theme';
-import { Colors } from '../../constants/Colors';
-import { Quest } from '../../types';
 
-export default function VocabularyScreen() {
-  const router = useRouter();
+import { Card } from '../components/common/Card';
+import { useQuestStore } from '../store/questStore';
+import { useProgressStore } from '../store/progressStore';
+import { Theme } from '../constants/Theme';
+import { Colors } from '../constants/Colors';
+import { Quest } from '../types';
+import { TabScreenProps } from '../navigation/types';
+
+type Props = TabScreenProps<'Grammar'>;
+
+export function GrammarScreen({ navigation }: Props) {
   const { allQuests } = useQuestStore();
   const { progress } = useProgressStore();
 
-  const vocabQuests = allQuests.filter((q) => q.type === 'vocabulary');
+  const grammarQuests = allQuests.filter((q) => q.type === 'grammar');
 
   return (
     <ScrollView
@@ -23,15 +25,15 @@ export default function VocabularyScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.subtitle}>
-        入試に出る必須英単語を体系的に学習しよう。クエストをクリアしてレベルアップ！
+        時制・仮定法・分詞構文など入試必須の文法事項をクエスト形式でマスターしよう！
       </Text>
 
-      {vocabQuests.map((quest) => (
+      {grammarQuests.map((quest) => (
         <QuestCard
           key={quest.id}
           quest={quest}
           completed={progress.completedQuestIds.includes(quest.id)}
-          onPress={() => router.push(`/quest/${quest.id}`)}
+          onPress={() => navigation.navigate('Quest', { questId: quest.id })}
         />
       ))}
     </ScrollView>
@@ -48,8 +50,11 @@ function QuestCard({
   onPress: () => void;
 }) {
   const diffColor =
-    quest.difficulty === 'easy' ? Colors.easy : quest.difficulty === 'medium' ? Colors.medium : Colors.hard;
-  const diffLabel = quest.difficulty === 'easy' ? '基礎' : quest.difficulty === 'medium' ? '標準' : '発展';
+    quest.difficulty === 'easy' ? Colors.easy :
+    quest.difficulty === 'medium' ? Colors.medium : Colors.hard;
+  const diffLabel =
+    quest.difficulty === 'easy' ? '基礎' :
+    quest.difficulty === 'medium' ? '標準' : '発展';
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
@@ -88,35 +93,26 @@ function QuestCard({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 32 },
-  subtitle: {
-    fontSize: Theme.fontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
+  content:   { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 32 },
+  subtitle:  { fontSize: Theme.fontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
 
-  card: { padding: Theme.spacing.lg, gap: Theme.spacing.sm },
+  card:   { padding: Theme.spacing.lg, gap: Theme.spacing.sm },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  diffBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Theme.borderRadius.full },
-  diffText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
+  diffBadge:      { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Theme.borderRadius.full },
+  diffText:       { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
   completedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  completedText: { fontSize: Theme.fontSize.xs, color: Colors.success, fontWeight: Theme.fontWeight.medium },
+  completedText:  { fontSize: Theme.fontSize.xs, color: Colors.success, fontWeight: Theme.fontWeight.medium },
 
   title: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, color: Colors.textPrimary },
-  desc: { fontSize: Theme.fontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
+  desc:  { fontSize: Theme.fontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
 
-  footer: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.md, marginTop: 4 },
-  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  footerText: { fontSize: Theme.fontSize.xs, color: Colors.textMuted },
+  footer:      { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.md, marginTop: 4 },
+  footerItem:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  footerText:  { fontSize: Theme.fontSize.xs, color: Colors.textMuted },
   startButton: {
-    marginLeft: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: 6,
-    borderRadius: Theme.borderRadius.full,
+    marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.primary, paddingHorizontal: Theme.spacing.md,
+    paddingVertical: 6, borderRadius: Theme.borderRadius.full,
   },
   startText: { fontSize: Theme.fontSize.sm, color: Colors.textOnPrimary, fontWeight: Theme.fontWeight.semibold },
 });

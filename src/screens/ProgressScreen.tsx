@@ -1,13 +1,14 @@
 import React from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../components/common/Card';
-import { ProgressBar } from '../../components/common/ProgressBar';
-import { useProgressStore } from '../../store/progressStore';
-import { Theme } from '../../constants/Theme';
-import { Colors } from '../../constants/Colors';
 
-export default function ProgressScreen() {
+import { Card } from '../components/common/Card';
+import { ProgressBar } from '../components/common/ProgressBar';
+import { useProgressStore } from '../store/progressStore';
+import { Theme } from '../constants/Theme';
+import { Colors } from '../constants/Colors';
+
+export function ProgressScreen() {
   const { progress } = useProgressStore();
 
   const xpInCurrentLevel = progress.xp - (progress.level - 1) * 200;
@@ -32,51 +33,25 @@ export default function ProgressScreen() {
           </View>
           <View style={styles.levelDetails}>
             <Text style={styles.levelTitle}>現在のレベル</Text>
-            <Text style={styles.xpText}>
-              {xpInCurrentLevel} / 200 XP
-            </Text>
+            <Text style={styles.xpText}>{xpInCurrentLevel} / 200 XP</Text>
             <Text style={styles.nextLevel}>
               次のレベルまで {200 - xpInCurrentLevel} XP
             </Text>
           </View>
         </View>
-        <ProgressBar progress={xpProgress} height={10} style={styles.xpBar} />
+        <ProgressBar progress={xpProgress} height={10} />
       </Card>
 
-      {/* 統計 */}
+      {/* 統計グリッド */}
       <Text style={styles.sectionTitle}>学習統計</Text>
       <View style={styles.statsGrid}>
-        <StatItem
-          icon="checkmark-done-circle"
-          iconColor={Colors.success}
-          value={progress.totalAnswered}
-          label="総回答数"
-          unit="問"
-        />
-        <StatItem
-          icon="bulb"
-          iconColor={Colors.warning}
-          value={accuracy}
-          label="正答率"
-          unit="%"
-        />
-        <StatItem
-          icon="flag"
-          iconColor={Colors.primary}
-          value={progress.completedQuestIds.length}
-          label="クリア済み"
-          unit="クエスト"
-        />
-        <StatItem
-          icon="flame"
-          iconColor={Colors.secondary}
-          value={progress.streakDays}
-          label="連続学習"
-          unit="日"
-        />
+        <StatItem icon="checkmark-done-circle" iconColor={Colors.success}   value={progress.totalAnswered}              label="総回答数" unit="問" />
+        <StatItem icon="bulb"                  iconColor={Colors.warning}   value={accuracy}                            label="正答率"   unit="%" />
+        <StatItem icon="flag"                  iconColor={Colors.primary}   value={progress.completedQuestIds.length}   label="クリア済み" unit="クエスト" />
+        <StatItem icon="flame"                 iconColor={Colors.secondary} value={progress.streakDays}                 label="連続学習" unit="日" />
       </View>
 
-      {/* 正答数・不正答数 */}
+      {/* 回答内訳 */}
       <Text style={styles.sectionTitle}>回答内訳</Text>
       <Card style={styles.breakdownCard}>
         <BreakdownRow
@@ -111,12 +86,9 @@ export default function ProgressScreen() {
   );
 }
 
+// ─── サブコンポーネント ─────────────────────────────────────────────────────
 function StatItem({
-  icon,
-  iconColor,
-  value,
-  label,
-  unit,
+  icon, iconColor, value, label, unit,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   iconColor: string;
@@ -135,83 +107,63 @@ function StatItem({
 }
 
 function BreakdownRow({
-  label,
-  value,
-  total,
-  color,
+  label, value, total, color,
 }: {
   label: string;
   value: number;
   total: number;
   color: string;
 }) {
-  const pct = total > 0 ? value / total : 0;
   return (
     <View style={styles.breakdownRow}>
       <Text style={styles.breakdownLabel}>{label}</Text>
       <View style={styles.breakdownBarWrapper}>
-        <ProgressBar progress={pct} color={color} height={6} />
+        <ProgressBar progress={total > 0 ? value / total : 0} color={color} height={6} />
       </View>
       <Text style={[styles.breakdownValue, { color }]}>{value}</Text>
     </View>
   );
 }
 
+// ─── スタイル ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 32 },
+  content:   { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 32 },
 
   levelCard: { padding: Theme.spacing.lg },
-  levelTop: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.md, marginBottom: Theme.spacing.md },
+  levelTop:  { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.md, marginBottom: Theme.spacing.md },
   levelCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: Theme.borderRadius.full,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 64, height: 64, borderRadius: Theme.borderRadius.full,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
   },
-  levelNum: { fontSize: Theme.fontSize.xxl, fontWeight: Theme.fontWeight.extrabold, color: Colors.textOnPrimary, lineHeight: 28 },
-  levelLbl: { fontSize: Theme.fontSize.xs, color: Colors.primaryLight, fontWeight: Theme.fontWeight.bold },
-  levelDetails: { flex: 1 },
-  levelTitle: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, color: Colors.textPrimary },
-  xpText: { fontSize: Theme.fontSize.md, color: Colors.primary, fontWeight: Theme.fontWeight.semibold, marginTop: 2 },
-  nextLevel: { fontSize: Theme.fontSize.sm, color: Colors.textMuted, marginTop: 2 },
-  xpBar: {},
+  levelNum:    { fontSize: Theme.fontSize.xxl, fontWeight: Theme.fontWeight.extrabold, color: Colors.textOnPrimary, lineHeight: 28 },
+  levelLbl:    { fontSize: Theme.fontSize.xs, color: Colors.primaryLight, fontWeight: Theme.fontWeight.bold },
+  levelDetails:{ flex: 1 },
+  levelTitle:  { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, color: Colors.textPrimary },
+  xpText:      { fontSize: Theme.fontSize.md, color: Colors.primary, fontWeight: Theme.fontWeight.semibold, marginTop: 2 },
+  nextLevel:   { fontSize: Theme.fontSize.sm, color: Colors.textMuted, marginTop: 2 },
 
   sectionTitle: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, color: Colors.textPrimary },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm },
-  statItem: {
-    flex: 1,
-    minWidth: '45%',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: Theme.spacing.lg,
-  },
+  statItem:  { flex: 1, minWidth: '45%', alignItems: 'center', gap: 4, paddingVertical: Theme.spacing.lg },
   statValue: { fontSize: Theme.fontSize.xxl, fontWeight: Theme.fontWeight.extrabold, color: Colors.textPrimary },
-  statUnit: { fontSize: Theme.fontSize.xs, color: Colors.textMuted },
+  statUnit:  { fontSize: Theme.fontSize.xs, color: Colors.textMuted },
   statLabel: { fontSize: Theme.fontSize.sm, color: Colors.textSecondary },
 
-  breakdownCard: { gap: Theme.spacing.md, padding: Theme.spacing.lg },
-  breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm },
-  breakdownLabel: { fontSize: Theme.fontSize.sm, color: Colors.textSecondary, width: 40 },
+  breakdownCard:       { gap: Theme.spacing.md, padding: Theme.spacing.lg },
+  breakdownRow:        { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm },
+  breakdownLabel:      { fontSize: Theme.fontSize.sm, color: Colors.textSecondary, width: 40 },
   breakdownBarWrapper: { flex: 1 },
-  breakdownValue: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold, width: 32, textAlign: 'right' },
-  divider: { height: 1, backgroundColor: Colors.divider },
+  breakdownValue:      { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold, width: 32, textAlign: 'right' },
+  divider:             { height: 1, backgroundColor: Colors.divider },
 
   messageCard: {
-    alignItems: 'center',
-    gap: Theme.spacing.sm,
-    padding: Theme.spacing.lg,
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primaryLight,
+    alignItems: 'center', gap: Theme.spacing.sm, padding: Theme.spacing.lg,
+    backgroundColor: Colors.primaryLight, borderColor: Colors.primaryLight,
   },
   messageText: {
-    fontSize: Theme.fontSize.md,
-    color: Colors.primary,
-    fontWeight: Theme.fontWeight.medium,
-    textAlign: 'center',
-    lineHeight: 24,
+    fontSize: Theme.fontSize.md, color: Colors.primary, fontWeight: Theme.fontWeight.medium,
+    textAlign: 'center', lineHeight: 24,
   },
 });

@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "jukken-quest",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jukkenquest.app"
@@ -18,15 +17,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.jukkenquest.app",
-      "predictiveBackGestureEnabled": false
+      "package": "com.jukkenquest.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-router"
-    ]
+      "favicon": "./assets/favicon.png"
+    }
   }
 }
