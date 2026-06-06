@@ -17,35 +17,17 @@ const allQuests = [...vocabularyQuests, ...grammarQuests];
 export const useQuestStore = create<QuestStore>((set, get) => ({
   allQuests,
   activeSession: null,
-
   startSession: (questId) => {
     const quest = allQuests.find((q) => q.id === questId);
     if (!quest) return;
-    set({
-      activeSession: {
-        questId,
-        currentIndex: 0,
-        answers: new Array(quest.totalQuestions).fill(null),
-        startedAt: Date.now(),
-      },
-    });
+    set({ activeSession: { questId, currentIndex: 0, answers: new Array(quest.totalQuestions).fill(null), startedAt: Date.now() } });
   },
-
-  submitAnswer: (answerIndex) =>
-    set((state) => {
-      if (!state.activeSession) return state;
-      const newAnswers = [...state.activeSession.answers];
-      newAnswers[state.activeSession.currentIndex] = answerIndex;
-      return {
-        activeSession: {
-          ...state.activeSession,
-          answers: newAnswers,
-          currentIndex: state.activeSession.currentIndex + 1,
-        },
-      };
-    }),
-
+  submitAnswer: (answerIndex) => set((state) => {
+    if (!state.activeSession) return state;
+    const newAnswers = [...state.activeSession.answers];
+    newAnswers[state.activeSession.currentIndex] = answerIndex;
+    return { activeSession: { ...state.activeSession, answers: newAnswers, currentIndex: state.activeSession.currentIndex + 1 } };
+  }),
   endSession: () => set({ activeSession: null }),
-
   getQuestById: (id) => get().allQuests.find((q) => q.id === id),
 }));

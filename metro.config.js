@@ -3,10 +3,9 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// Web ビルド時に Native 専用モジュールをスタブファイルへ差し替える
 const WEB_STUBS = {
   'react-native-gesture-handler': path.resolve(__dirname, 'web-stubs/react-native-gesture-handler.js'),
-  'react-native-reanimated':      path.resolve(__dirname, 'web-stubs/react-native-reanimated.js'),
+  'react-native-reanimated': path.resolve(__dirname, 'web-stubs/react-native-reanimated.js'),
 };
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {

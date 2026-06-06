@@ -1,5 +1,3 @@
-// Web 用スタブ: react-native-gesture-handler は Web では不要
-// React Navigation の Web ビルド時にこのファイルに差し替える
 const React = require('react');
 const { View } = require('react-native');
 

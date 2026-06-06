@@ -1,8 +1,6 @@
-// Web 用スタブ: react-native-reanimated の Web 互換レイヤー
 const React = require('react');
 const RN = require('react-native');
 
-// Animated values
 function useSharedValue(init) { return { value: init }; }
 function useAnimatedStyle(fn) { return fn(); }
 function withTiming(val) { return val; }

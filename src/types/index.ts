@@ -1,5 +1,4 @@
 export type QuestionType = 'vocabulary' | 'grammar' | 'reading';
-
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface Question {
