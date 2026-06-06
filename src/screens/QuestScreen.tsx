@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { Card } from '../components/common/Card';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { useQuestStore } from '../store/questStore';
 import { useProgressStore } from '../store/progressStore';
+import { useVoiceFeedback } from '../hooks/useVoiceFeedback';
 import { Theme } from '../constants/Theme';
 import { Colors } from '../constants/Colors';
 import { Quest } from '../types';
@@ -29,6 +31,9 @@ export function QuestScreen({ route, navigation }: Props) {
   const { getQuestById, activeSession, startSession, submitAnswer, endSession } = useQuestStore();
   const { addXP, recordAnswer, completeQuest } = useProgressStore();
 
+  // 音声フィードバック Hook（語彙クエストのみ使用するが、常にマウントする）
+  const { isLoading: voiceLoading, isPlaying: voicePlaying, error: voiceError, playFeedback, stop: stopVoice } = useVoiceFeedback();
+
   const quest = getQuestById(questId);
   const [phase, setPhase] = useState<Phase>('intro');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -36,7 +41,10 @@ export function QuestScreen({ route, navigation }: Props) {
   const [results, setResults] = useState<boolean[]>([]);
 
   useEffect(() => {
-    return () => endSession();
+    return () => {
+      endSession();
+      stopVoice(); // 画面離脱時に音声を止める
+    };
   }, []);
 
   const handleAbort = useCallback(() => {
@@ -76,7 +84,7 @@ export function QuestScreen({ route, navigation }: Props) {
   const currentQuestion = quest.questions[currentIndex];
   const isLastQuestion = currentIndex === quest.totalQuestions - 1;
 
-  // ─── フェーズ遷移ハンドラー ─────────────────────────────────────────────
+  // ─── フェーズ遷移ハンドラー ────────────────────────────────────────────────
   function handleStart() {
     startSession(quest!.id);
     setPhase('quiz');
@@ -92,10 +100,23 @@ export function QuestScreen({ route, navigation }: Props) {
 
   function handleConfirm() {
     if (selectedIndex === null) return;
+
     const correct = selectedIndex === currentQuestion.correctIndex;
     setRevealed(true);
     recordAnswer(correct);
     setResults((prev) => [...prev, correct]);
+
+    // 語彙クエストのみ音声フィードバックを再生
+    if (quest!.type === 'vocabulary') {
+      playFeedback({
+        correct,
+        questionText: currentQuestion.question,
+        correctAnswer: currentQuestion.options[currentQuestion.correctIndex],
+        userAnswer: currentQuestion.options[selectedIndex],
+        explanation: currentQuestion.explanation,
+        questType: quest!.type,
+      });
+    }
   }
 
   function handleNext() {
@@ -121,7 +142,7 @@ export function QuestScreen({ route, navigation }: Props) {
     return 'default';
   }
 
-  // ─── フェーズ別レンダリング ─────────────────────────────────────────────
+  // ─── フェーズ別レンダリング ────────────────────────────────────────────────
   if (phase === 'intro') {
     return (
       <IntroPhase
@@ -145,7 +166,9 @@ export function QuestScreen({ route, navigation }: Props) {
     );
   }
 
-  // ─── クイズフェーズ ─────────────────────────────────────────────────────
+  // ─── クイズフェーズ ────────────────────────────────────────────────────────
+  const isVocabQuest = quest.type === 'vocabulary';
+
   return (
     <View style={styles.quizContainer}>
       <View style={styles.progressRow}>
@@ -177,6 +200,7 @@ export function QuestScreen({ route, navigation }: Props) {
           ))}
         </View>
 
+        {/* 解説 + 音声ステータス */}
         {revealed && (
           <Card style={styles.explanationCard}>
             <View style={styles.explanationHeader}>
@@ -191,6 +215,26 @@ export function QuestScreen({ route, navigation }: Props) {
               ]}>
                 {selectedIndex === currentQuestion.correctIndex ? '正解！' : '不正解'}
               </Text>
+
+              {/* 音声ステータスバッジ（語彙クエストのみ） */}
+              {isVocabQuest && (
+                <VoiceStatusBadge
+                  isLoading={voiceLoading}
+                  isPlaying={voicePlaying}
+                  hasError={!!voiceError}
+                  onReplay={() => {
+                    if (selectedIndex === null) return;
+                    playFeedback({
+                      correct: selectedIndex === currentQuestion.correctIndex,
+                      questionText: currentQuestion.question,
+                      correctAnswer: currentQuestion.options[currentQuestion.correctIndex],
+                      userAnswer: currentQuestion.options[selectedIndex],
+                      explanation: currentQuestion.explanation,
+                      questType: quest!.type,
+                    });
+                  }}
+                />
+              )}
             </View>
             <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
           </Card>
@@ -207,7 +251,52 @@ export function QuestScreen({ route, navigation }: Props) {
   );
 }
 
-// ─── イントロ画面 ──────────────────────────────────────────────────────────
+// ─── 音声ステータスバッジ ──────────────────────────────────────────────────────
+function VoiceStatusBadge({
+  isLoading,
+  isPlaying,
+  hasError,
+  onReplay,
+}: {
+  isLoading: boolean;
+  isPlaying: boolean;
+  hasError: boolean;
+  onReplay: () => void;
+}) {
+  if (isLoading) {
+    return (
+      <View style={styles.voiceBadge}>
+        <ActivityIndicator size="small" color={Colors.primary} />
+        <Text style={styles.voiceBadgeText}>音声を取得中…</Text>
+      </View>
+    );
+  }
+  if (isPlaying) {
+    return (
+      <View style={[styles.voiceBadge, styles.voiceBadgePlaying]}>
+        <Ionicons name="volume-high" size={14} color={Colors.primary} />
+        <Text style={styles.voiceBadgeText}>再生中</Text>
+      </View>
+    );
+  }
+  if (hasError) {
+    return (
+      <TouchableOpacity style={[styles.voiceBadge, styles.voiceBadgeError]} onPress={onReplay}>
+        <Ionicons name="refresh" size={14} color={Colors.danger} />
+        <Text style={[styles.voiceBadgeText, { color: Colors.danger }]}>再試行</Text>
+      </TouchableOpacity>
+    );
+  }
+  // 再生完了 → リプレイボタン
+  return (
+    <TouchableOpacity style={styles.voiceBadge} onPress={onReplay}>
+      <Ionicons name="play-circle-outline" size={14} color={Colors.textMuted} />
+      <Text style={[styles.voiceBadgeText, { color: Colors.textMuted }]}>もう一度</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── イントロ画面 ──────────────────────────────────────────────────────────────
 function IntroPhase({
   quest, onStart, onBack,
 }: { quest: Quest; onStart: () => void; onBack: () => void }) {
@@ -229,6 +318,12 @@ function IntroPhase({
       </View>
       <Text style={styles.introTitle}>{quest.title}</Text>
       <Text style={styles.introDesc}>{quest.description}</Text>
+      {quest.type === 'vocabulary' && (
+        <View style={styles.voiceNotice}>
+          <Ionicons name="volume-medium" size={16} color={Colors.primary} />
+          <Text style={styles.voiceNoticeText}>正解・不正解時に音声フィードバックが流れます</Text>
+        </View>
+      )}
       <View style={styles.introMeta}>
         <MetaChip icon="help-circle" label={`${quest.totalQuestions}問`} />
         <MetaChip icon="star" label={`${quest.xpReward} XP`} iconColor={Colors.warning} />
@@ -253,7 +348,7 @@ function MetaChip({
   );
 }
 
-// ─── 結果画面 ──────────────────────────────────────────────────────────────
+// ─── 結果画面 ──────────────────────────────────────────────────────────────────
 function ResultPhase({
   quest, correctCount, results, onRetry, onHome,
 }: {
@@ -300,7 +395,7 @@ function ResultPhase({
   );
 }
 
-// ─── スタイル ──────────────────────────────────────────────────────────────
+// ─── スタイル ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Theme.spacing.md },
@@ -313,9 +408,19 @@ const styles = StyleSheet.create({
   options:       { gap: Theme.spacing.sm },
 
   explanationCard:   { backgroundColor: Colors.surfaceVariant },
-  explanationHeader: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, marginBottom: Theme.spacing.sm },
+  explanationHeader: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, marginBottom: Theme.spacing.sm, flexWrap: 'wrap' },
   explanationResult: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
   explanationText:   { fontSize: Theme.fontSize.sm, color: Colors.textPrimary, lineHeight: 22 },
+
+  // 音声ステータスバッジ
+  voiceBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginLeft: 'auto', paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: Theme.borderRadius.full, backgroundColor: Colors.primaryLight,
+  },
+  voiceBadgePlaying: { backgroundColor: Colors.primaryLight },
+  voiceBadgeError:   { backgroundColor: '#FFF0F0' },
+  voiceBadgeText:    { fontSize: Theme.fontSize.xs, color: Colors.primary },
 
   actionBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -330,12 +435,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center',
     marginBottom: Theme.spacing.sm,
   },
-  introTitle: { fontSize: Theme.fontSize.xxl, fontWeight: Theme.fontWeight.extrabold, color: Colors.textPrimary, textAlign: 'center' },
-  introDesc:  { fontSize: Theme.fontSize.md, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
-  introMeta:  { flexDirection: 'row', gap: Theme.spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
-  metaChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Theme.spacing.md, paddingVertical: 6, borderRadius: Theme.borderRadius.full },
+  introTitle:   { fontSize: Theme.fontSize.xxl, fontWeight: Theme.fontWeight.extrabold, color: Colors.textPrimary, textAlign: 'center' },
+  introDesc:    { fontSize: Theme.fontSize.md, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  voiceNotice:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.primaryLight, paddingHorizontal: Theme.spacing.md, paddingVertical: 8, borderRadius: Theme.borderRadius.md },
+  voiceNoticeText: { fontSize: Theme.fontSize.sm, color: Colors.primary },
+  introMeta:    { flexDirection: 'row', gap: Theme.spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
+  metaChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Theme.spacing.md, paddingVertical: 6, borderRadius: Theme.borderRadius.full },
   metaChipText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
-  startBtn:   { width: '100%', marginTop: Theme.spacing.md },
+  startBtn:     { width: '100%', marginTop: Theme.spacing.md },
 
   resultContent: { padding: Theme.spacing.xl, alignItems: 'center', gap: Theme.spacing.md, paddingBottom: 48 },
   resultEmoji:   { fontSize: 64, marginBottom: Theme.spacing.sm },
@@ -344,8 +451,8 @@ const styles = StyleSheet.create({
   resultSub:     { fontSize: Theme.fontSize.md, color: Colors.textSecondary },
   xpCard:   { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, backgroundColor: '#FFF8E8', borderColor: Colors.warning, paddingHorizontal: Theme.spacing.xl, paddingVertical: Theme.spacing.md },
   xpEarned: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, color: Colors.warning },
-  resultAnswers: { flexDirection: 'row', gap: Theme.spacing.md, flexWrap: 'wrap', justifyContent: 'center' },
+  resultAnswers:  { flexDirection: 'row', gap: Theme.spacing.md, flexWrap: 'wrap', justifyContent: 'center' },
   resultDot:      { alignItems: 'center', gap: 4 },
   resultDotLabel: { fontSize: Theme.fontSize.xs, color: Colors.textMuted },
-  retryBtn: { width: '100%', marginTop: Theme.spacing.sm },
+  retryBtn:       { width: '100%', marginTop: Theme.spacing.sm },
 });
